@@ -15,8 +15,18 @@ module NavigationHelpers
 
     when /^the home\s?page$/
       '/'
+
     when /^the new article page$/
       '/admin/content/new'
+
+    when /^the show page for article "(.*)"$/
+      article = Article.find_by_title($1)
+      title = article.title.parameterize
+      year = article.created_at.year
+      month = article.created_at.month
+      day = article.created_at.day
+      name_path = "/#{year}/#{month}/#{day}/#{title}"
+      name_path
 
     # Add more mappings here.
     # Here is an example that pulls values out of the Regexp:

@@ -97,7 +97,7 @@
       <%= text_field 'article', 'title', :class => 'span1', :style => ' width: 99%', :placeholder => _('Title') %>
     </div>
 
-    <%= render('images', { :images => @images}) unless @images.empty? %>
+    <%= render('images', { :images => @images}) unless @images.blank? %>
 
     <div id='editor-menu'>
 		<ul class="tabs">
@@ -149,5 +149,13 @@
   </div>    
   </div>
 
-</div>
+  <% if @show_merge_articles_field %>
+    <div class=''>
+      <h4><%= _("Merge Articles") %></h4>
+      <h5><%= _("Article ID") %></h5>
+      <%= text_field_tag("merge_with") %>
+      <%= submit_tag(_("Merge"), {:target => 'edit', :class => 'btn'})%>
+    </div>
+  <% end %>
 
+</div>

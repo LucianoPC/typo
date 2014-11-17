@@ -24,11 +24,13 @@ class Admin::ContentController < Admin::BaseController
   end
 
   def new
+    @show_merge_articles_field = false
     new_or_edit
   end
 
   def edit
     @article = Article.find(params[:id])
+    @show_merge_articles_field = current_user.admin?
     unless @article.access_by? current_user
       redirect_to :action => 'index'
       flash[:error] = _("Error, you are not allowed to perform this action")
@@ -171,8 +173,15 @@ class Admin::ContentController < Admin::BaseController
       if @article.save
         destroy_the_draft unless @article.draft
         set_article_categories
-        set_the_flash
-        redirect_to :action => 'index'
+
+        if not params[:merge_with].blank?
+          flash[:notice] = _('Articles was merged')
+          merge_articles
+        else
+          set_the_flash
+          redirect_to :action => 'index'
+        end
+
         return
       end
     end
@@ -240,4 +249,52 @@ class Admin::ContentController < Admin::BaseController
   def setup_resources
     @resources = Resource.by_created_at
   end
+
+  def merge_articles
+    if !current_user.admin?
+      flash[:notice] = _("Error: Only admin merge articles")
+      redirect_to :action => 'edit', :id => params[:id]
+      return
+    end
+
+    if params[:id] == params[:merge_with]
+      flash[:notice] = _("Error: The id of the articles may not be equal, and id's must exist")
+      redirect_to :action => 'edit', :id => params[:id]
+      return
+    end
+
+    article_one = Article.find_by_id(params[:id])
+    article_two = Article.find_by_id(params[:merge_with])
+
+    if !article_one.blank? and !article_two.blank?
+      merged_article = article_one.clone
+      merged_article.body = [article_one.body, article_two.body].join("\n")
+      merged_article.comments = article_one.comments + article_two.comments
+
+      article_one.comments.each do |cmt|
+        comment = merged_article.add_comment(cmt.attributes.symbolize_keys)
+        comment.save!
+      end
+      article_two.comments.each do |cmt|
+        comment = merged_article.add_comment(cmt.attributes.symbolize_keys)
+        comment.save!
+      end
+
+      merged_article.published_at = DateTime.strptime(params[:article][:published_at], "%B %e, %Y %I:%M %p GMT%z").utc rescue Time.parse(params[:article][:published_at]).utc rescue nil
+      merged_article.guid = nil
+
+      article_one.destroy
+      article_two.destroy
+
+      merged_article.save!
+
+      redirect_to :action => 'edit', :id => merged_article.id
+      return
+    else
+      flash[:notice] = _("Error: the article ID must exist")
+      redirect_to :action => 'edit', :id => params[:id]
+      return
+    end
+  end
+
 end
